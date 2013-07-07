@@ -1,0 +1,7 @@
+Build.PL
+LICENSE
+MANIFEST
+META.yml
+lib/JavaBin.pm
+t/data
+t/run.t
