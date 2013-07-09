@@ -1,8 +1,19 @@
 package JavaBin;
 {
-  $JavaBin::VERSION = '0.1';
+  $JavaBin::VERSION = '0.2';
 }
 # ABSTRACT: Apache Solr JavaBin (de)serializer
+
+#require DynaLoader;
+
+#@ISA     = 'DynaLoader';
+#$VERSION = .1;
+
+#bootstrap JavaBin $VERSION;
+
+#sub import {
+#    *{ caller() . '::from_javabin' } = \&from_javabin;
+#}
 
 use strict;
 use warnings;
@@ -150,7 +161,6 @@ sub _vint {
 1;
 
 
-
 =pod
 
 =head1 NAME
@@ -159,7 +169,7 @@ JavaBin - Apache Solr JavaBin (de)serializer
 
 =head1 VERSION
 
-version 0.1
+version 0.2
 
 =head1 SYNOPSIS
 
@@ -188,6 +198,13 @@ Returns a scalar representation of the data, be that undef, number, string, or r
 This function does no error checking, hand it invalid JavaBin and it will probably die.
 
 =head1 CAVEATS
+
+To (de)serialize long floats and ints this package requires a 64bit Perl.
+That said, it won't actually throw unless it encounters such data, and therefore
+the tests for such data are skipped on 32bit platforms.
+
+Technically this limitation could be worked around by use of L<bigint> or such.
+But the added complexity and maintanace cost would outweight the benifit.
 
 Due to the differences between Java and Perl not all data structures can be mapped one-to-one.
 

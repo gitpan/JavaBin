@@ -3,10 +3,11 @@ abstract: 'Apache Solr JavaBin (de)serializer'
 author:
   - 'James Raspass <jraspass@gmail.com>'
 build_requires:
+  Module::Build: 0.3601
   Test::More: 0
   charnames: 0
 configure_requires:
-  Module::Build::Tiny: 0.024
+  Module::Build: 0.3601
 dynamic_config: 0
 generated_by: 'Dist::Zilla version 4.300035, CPAN::Meta::Converter version 2.131560'
 license: perl
@@ -16,6 +17,10 @@ meta-spec:
 name: JavaBin
 requires:
   Filter::cpp: 0
+  perl: 5.01
   strict: 0
   warnings: 0
-version: 0.1
+resources:
+  bugtracker: https://github.com/JRaspass/JavaBin/issues
+  repository: git://github.com/JRaspass/JavaBin.git
+version: 0.2
