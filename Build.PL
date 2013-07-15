@@ -17,7 +17,7 @@ my %module_build_args = (
     "James Raspass <jraspass\@gmail.com>"
   ],
   "dist_name" => "JavaBin",
-  "dist_version" => "0.2",
+  "dist_version" => "0.3",
   "license" => "perl",
   "module_name" => "JavaBin",
   "recommends" => {},

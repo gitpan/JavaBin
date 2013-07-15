@@ -15,6 +15,10 @@ meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
   version: 1.4
 name: JavaBin
+provides:
+  JavaBin:
+    file: lib/JavaBin.pm
+    version: 0.3
 requires:
   Filter::cpp: 0
   perl: 5.01
@@ -23,4 +27,4 @@ requires:
 resources:
   bugtracker: https://github.com/JRaspass/JavaBin/issues
   repository: git://github.com/JRaspass/JavaBin.git
-version: 0.2
+version: 0.3

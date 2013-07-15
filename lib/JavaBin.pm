@@ -1,19 +1,8 @@
 package JavaBin;
 {
-  $JavaBin::VERSION = '0.2';
+  $JavaBin::VERSION = '0.3';
 }
 # ABSTRACT: Apache Solr JavaBin (de)serializer
-
-#require DynaLoader;
-
-#@ISA     = 'DynaLoader';
-#$VERSION = .1;
-
-#bootstrap JavaBin $VERSION;
-
-#sub import {
-#    *{ caller() . '::from_javabin' } = \&from_javabin;
-#}
 
 use strict;
 use warnings;
@@ -169,7 +158,7 @@ JavaBin - Apache Solr JavaBin (de)serializer
 
 =head1 VERSION
 
-version 0.2
+version 0.3
 
 =head1 SYNOPSIS
 
