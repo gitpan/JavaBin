@@ -1,98 +1,114 @@
 use strict;
 use warnings;
 
-use charnames ':full';
-
+use B 'svref_2object';
 use JavaBin;
-use Test::More;
+use Test::More 0.96;
 
-note 'constants';
+sub bnote($) { note "\r\x1b[1m@_\x1b[0m" }
+sub nsort(@) { sort { $a <=> $b } @_ }
+sub slurp($) { open my $fh, '<', @_ or die $!; local $/; <$fh> }
 
-is from_javabin "\0\0", undef, 'undef';
-is from_javabin "\0\1", 1, 'true';
-is from_javabin "\0\2", 0, 'false';
+sub test_ref(@) {
+    my ( $type, @values ) = @_;
 
-note 'bytes';
+    my $plural = "${type}s";
 
-is from_javabin( "\0\3" . pack 'c', $_ ), $_, "byte $_" for qw/-128
-                                                                0
-                                                                127/;
+    bnote join(' ', split /_/, $type) . 's';
 
-note 'shorts';
+    for (@values) {
+        my $ref = from_javabin slurp "${type}-$_";
 
-is from_javabin( "\0\4" . pack 's>', $_ ), $_, "short $_" for qw/-32768
-                                                                 -129
-                                                                  0
-                                                                  128
-                                                                  32767/;
+        subtest $_, sub {
+            is_deeply $ref, eval "+$_", 'value matches';
 
-note 'ints';
+            is svref_2object($ref)->REFCNT, 1, 'reference count is 1';
+        };
+    }
+}
 
-is from_javabin( "\0\6" . pack 'l>', $_ ), $_, "int $_" for qw/-2147483648
-                                                               -8388609
-                                                               -32769
-                                                               -129
-                                                                0
-                                                                128
-                                                                32768
-                                                                8388608
-                                                                2147483647/;
+binmode Test::More->builder->$_, ':utf8' for qw/failure_output output todo_output/;
 
-note 'longs';
+chdir 't/data' or die $!;
+
+bnote 'no args';
+
+is from_javabin(), undef, 'scalar context';
+is_deeply [from_javabin()], [], 'array context';
+
+bnote 'constants';
+
+is from_javabin("\0\0"), undef, 'undef';
+is from_javabin("\0\1"), 1, 'true';
+is from_javabin("\0\2"), 0, 'false';
+
+bnote 'bytes';
+
+is from_javabin(slurp "byte-$_"), $_, "byte $_" for nsort map /-(.*)/, <byte-*>;
+
+bnote 'shorts';
+
+is from_javabin(slurp "short-$_"), $_, "short $_" for nsort map /-(.*)/, <short-*>;
+
+bnote 'ints';
+
+is from_javabin(slurp "int-$_"), $_, "int $_" for nsort map /-(.*)/, <int-*>;
+
+bnote 'longs';
 
 SKIP: {
-    skip '64bit ints are unsupported on your platform.', 1 unless eval { pack 'q' };
+    my @longs = nsort map /-(.*)/, <long-*>;
 
-    is from_javabin( "\0\7" . pack 'q>', $_ ), $_, "long $_" for qw/-9223372036854775808
-                                                                    -36028797018963969
-                                                                    -140737488355329
-                                                                    -549755813889
-                                                                    -2147483649
-                                                                    -8388609
-                                                                    -32769
-                                                                    -129
-                                                                     0
-                                                                     128
-                                                                     32768
-                                                                     8388608
-                                                                     2147483648
-                                                                     549755813888
-                                                                     140737488355328
-                                                                     36028797018963968
-                                                                     9223372036854775807/;
+    skip '64bit ints are unsupported on your platform.', ~~@longs unless eval { pack 'q' };
+
+    is from_javabin(slurp "long-$_"), $_, "long $_" for @longs;
 };
 
-note 'vints';
+bnote 'floats';
 
-my %vints = (
-    127    => [ 0x7F ],
-    128    => [ 0x80, 0x01 ],
-    16_383 => [ 0xFF, 0x7F ],
-    16_384 => [ 0x80, 0x80, 0x01 ],
-);
+is from_javabin(slurp "float-$_"), $_, "float $_" for sort map /-(.*)/, <float-*>;
 
-is( JavaBin->_bytes( pack 'C*', @{ $vints{$_} } )->_vint, $_, "vint $_" ) for sort keys %vints;
+bnote 'doubles';
 
-note 'all';
+is from_javabin(slurp "double-$_"), $_, "double $_" for sort map /-(.*)/, <double-*>;
 
-open my $fh, '<', 't/data';
+bnote 'dates';
 
-is_deeply from_javabin( do { local $/; <$fh> } ), {
+is from_javabin(slurp "date-$_"), $_, "date $_" for sort map /-(.*)/, <date-*>;
+
+bnote 'strings';
+
+for ( sort map /-(.*)/, <string-*> ) {
+    utf8::decode $_;
+
+    is from_javabin(slurp "string-$_"), $_, qq/string "$_"/;
+}
+
+test_ref array              =>         sort map /-(.*)/, <array-*>;
+test_ref byte_array         =>         sort map /-(.*)/, <byte_array-*>;
+test_ref iterator           =>         sort map /-(.*)/, <iterator-*>;
+test_ref map                => reverse sort map /-(.*)/, <map-*>;
+test_ref simple_ordered_map =>         sort map /-(.*)/, <simple_ordered_map-*>;
+test_ref named_list         =>         sort map /-(.*)/, <named_list-*>;
+test_ref solr_document      => reverse sort map /-(.*)/, <solr_document-*>;
+test_ref solr_document_list =>         sort map /-(.*)/, <solr_document_list-*>;
+test_ref string_caching     =>         sort map /-(.*)/, <string_caching-*>;
+
+bnote 'all';
+
+is_deeply from_javabin(slurp 'all'), {
     array        => [qw/foo bar baz qux/],
     byte         => 127,
     byte_array   => [qw/-128 0 127/],
     byte_neg     => -128,
-    double       => 1.797_693_134_862_31e308,
     iterator     => [qw/qux baz bar foo/],
     false        => 0,
-    float        => 3.402_823_466_385_29e38,
-    shifted_sint => 2_147_483_647,
     null         => undef,
     pangram      => 'The quick brown fox jumped over the lazy dog',
     short        =>  32_767,
     short_neg    => -32_768,
-    snowman      => "\N{SNOWMAN}",
+    snowman      => "\N{U+2603}",
     true         => 1,
-}, 'from_javabin';
+}, 'all';
 
 done_testing;

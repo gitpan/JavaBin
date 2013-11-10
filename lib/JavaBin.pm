@@ -1,156 +1,25 @@
 package JavaBin;
-{
-  $JavaBin::VERSION = '0.3';
-}
 # ABSTRACT: Apache Solr JavaBin (de)serializer
 
-use strict;
-use warnings;
+require DynaLoader;
 
-use Filter::cpp;
+$VERSION = .4;
 
-# define BYTES($num) substr $bytes, 0, $num, ''
-# define DISPATCH &{ $dispatch_shift[ ( $tag = ord BYTES(1) ) >> 5 ] || $dispatch[$tag] }
+DynaLoader::bootstrap('JavaBin');
 
-my ( $bytes, @dispatch, @dispatch_shift, @exts, $size, $tag );
-
-@dispatch = (
-    # null
-    sub { undef },
-    # bool true
-    sub { 1 },
-    # bool false
-    sub { 0 },
-    # byte
-    sub { unpack 'c', BYTES(1) },
-    # short
-    sub { unpack 's>', BYTES(2) },
-    # double
-    sub { unpack 'd>', BYTES(8) },
-    # int
-    sub { unpack 'l>', BYTES(4) },
-    # long
-    sub { unpack 'q>', BYTES(8) },
-    # float,
-    sub { unpack 'f>', BYTES(4) },
-    # date
-    sub {
-        my ( $s, $m, $h, $d, $M, $y ) = gmtime( unpack( 'q>', BYTES(8) ) / 1000 );
-
-        sprintf '%d-%02d-%02dT%02d:%02d:%02dZ', $y + 1900, $M + 1, $d, $h, $m, $s;
-    },
-    # map
-    sub { +{ map DISPATCH, 1 .. _vint() * 2 } },
-    # solr doc
-    sub { DISPATCH },
-    # solr doc list
-    sub {
-        my %result;
-
-        @result{qw/numFound start maxScore docs/} = ( @{ DISPATCH }, DISPATCH );
-
-        \%result;
-    },
-    # byte array
-    sub { [ unpack 'c*', BYTES(_vint()) ] },
-    # iterator
-    sub {
-        my @array;
-
-        push @array, &{ $dispatch_shift[ $tag >> 5 ] || $dispatch[$tag] }
-            until ( $tag = ord BYTES(1) ) == 15;
-
-        \@array;
-    },
-);
-
-# These datatypes are matched by taking the tag byte, shifting it by 5 so to only read
-# the first 3 bits of the tag byte, giving it a range or 0-7 inclusive.
-#
-# The remaining 5 bits can then be used to store the size of the datatype, e.g. how
-# many chars in a string, this therefore has a range of 0-31, if the size exceeds or
-# matches this then an additional vint is added.
-#
-# The overview of the tag byte is therefore TTTSSSSS with T and S being type and size.
-@dispatch_shift = (
-    undef,
-    # string
-    sub {
-        utf8::decode my $string = BYTES( ( $size = $tag & 31 ) == 31 ? 31 + _vint() : $size );
-
-        $string;
-    },
-    # small int
-    sub { read_small_int() },
-    # small long
-    sub { read_small_int() },
-    # array
-    sub { [ map DISPATCH, 1 .. ( ( $size = $tag & 31 ) == 31 ? 31 + _vint() : $size ) ] },
-    # ordered map
-    sub { +{ map DISPATCH, 1 .. ( ( $size = $tag & 31 ) == 31 ? 31 + _vint() : $size ) * 2 } },
-    # named list
-    sub { +{ map DISPATCH, 1 .. ( ( $size = $tag & 31 ) == 31 ? 31 + _vint() : $size ) * 2 } },
-    # extern string
-    sub {
-        if ( ( $size = $tag & 31 ) == 31 ? $size += _vint() : $size ) {
-            $exts[$size - 1];
-        }
-        else {
-            utf8::decode my $string = BYTES( ( $size = ord( BYTES(1) ) & 31 ) == 31 ? 31 + _vint() : $size );
-
-            push @exts, $string;
-
-            $string;
-        }
-    },
-);
-
-sub from_javabin($) {
-    # Read the input into $bytes whilst skipping the version byte.
-    $bytes = substr shift, 1;
-
-    @exts = ();
-
-    DISPATCH;
-}
+sub dl_load_flags { 0 }
 
 sub import {
-    no strict 'refs';
-
     *{ caller() . '::from_javabin' } = \&from_javabin;
-}
-
-sub read_small_int {
-    my $result = $tag & 0x0f;
-
-    $result = _vint() << 4 | $result if $tag & 0x10;
-
-    $result;
-}
-
-# A private setter of bytes to allow unit testing.
-sub _bytes {
-    $bytes = pop;
-
-    shift;
-}
-
-# Lucene variable-length +ve integer, the MSB indicates whether you need another octet.
-# http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/fileformats.html#VInt
-sub _vint {
-    my ( $byte, $shift, $value );
-
-    $value = ( $byte = ord BYTES(1) ) & 127;
-
-    $value |= ( ( $byte = ord BYTES(1) ) & 127 ) << ( $shift += 7 ) while $byte & 128;
-
-    $value;
 }
 
 1;
 
+__END__
 
 =pod
+
+=encoding UTF-8
 
 =head1 NAME
 
@@ -158,7 +27,7 @@ JavaBin - Apache Solr JavaBin (de)serializer
 
 =head1 VERSION
 
-version 0.3
+version 0.4
 
 =head1 SYNOPSIS
 
@@ -186,19 +55,53 @@ Returns a scalar representation of the data, be that undef, number, string, or r
 
 This function does no error checking, hand it invalid JavaBin and it will probably die.
 
-=head1 CAVEATS
+=head1 DATA TYPE MAPPING
 
-To (de)serialize long floats and ints this package requires a 64bit Perl.
-That said, it won't actually throw unless it encounters such data, and therefore
-the tests for such data are skipped on 32bit platforms.
+Java data types are mapped to Perl ones as follows.
 
-Technically this limitation could be worked around by use of L<bigint> or such.
-But the added complexity and maintanace cost would outweight the benifit.
+=head2 null
 
-Due to the differences between Java and Perl not all data structures can be mapped one-to-one.
+A null is returned as L<undef>.
 
-An example of such mapping is a Java interator whcih becomes a Perl array during deserialization.
-Additionally a Java HashMap, Named List, or Ordered Map will become a Perl hash.
+=head2 Booleans
+
+True and false are returned as 1 and 0 respectively.
+
+=head2 Byte, short, double, int, and long.
+
+Integers of all size are returned as scalars, with the requirement of a 64bit Perl for longs.
+
+=head2 Float
+
+A float is returned as a scalar, with the requirement of a 64bit Perl for large values.
+
+=head2 Date
+
+A date is returned as a string in ISO 8601 format. This may change to be a Date object like L<DateTime> in future.
+
+=head2 Map
+
+A map is returned as a hash.
+
+=head2 Iterator
+
+An iterator is flattened into an array.
+
+=head2 String
+
+All strings are returned as strings with the UTF-8 flag on.
+
+=head2 Array
+
+An array is returned as an array.
+
+=head2 SimpleOrderedMap
+
+A SimpleOrderedMap is returned as an array. This will likely change to be a tied hash like L<Tie::IxHash> in future.
+
+=head2 NamedList
+
+A NamedList is returned as an array. This will likely change to be a tied hash or object in future.
 
 =head1 TODO
 
@@ -207,10 +110,6 @@ Additionally a Java HashMap, Named List, or Ordered Map will become a Perl hash.
 =item *
 
 C<to_javabin> serializer.
-
-=item *
-
-XS implementation.
 
 =back
 
