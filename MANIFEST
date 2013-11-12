@@ -65,8 +65,8 @@ t/data/solr_document-{}
 't/data/solr_document_list-{ docs => [], maxScore => undef, numFound => 0, start => 0 }'
 't/data/solr_document_list-{ docs => [{qw(foo bar baz qux)}], maxScore => 0.1, numFound => 2, start => 3 }'
 t/data/string-
-t/data/string-GrÃ¼Ãen
+t/data/string-Grussen
 't/data/string-The quick brown fox jumped over the lazy dog'
-t/data/string-â
+t/data/string-snowman
 't/data/string_caching-[{qw(foo bar)},{qw(foo bar)}]'
 t/run.t

@@ -3,7 +3,7 @@ package JavaBin;
 
 require DynaLoader;
 
-$VERSION = .5;
+$VERSION = .6;
 
 DynaLoader::bootstrap('JavaBin');
 
@@ -27,7 +27,7 @@ JavaBin - Apache Solr JavaBin (de)serializer
 
 =head1 VERSION
 
-version 0.5
+version 0.6
 
 =head1 SYNOPSIS
 

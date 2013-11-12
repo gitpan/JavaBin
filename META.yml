@@ -19,11 +19,11 @@ name: JavaBin
 provides:
   JavaBin:
     file: lib/JavaBin.pm
-    version: 0.5
+    version: 0.6
 requires:
   DynaLoader: 0
   perl: 5.010
 resources:
   bugtracker: https://github.com/JRaspass/JavaBin/issues
   repository: git://github.com/JRaspass/JavaBin.git
-version: 0.5
+version: 0.6
