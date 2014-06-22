@@ -1,3 +1,6 @@
+0.9 2014-06-22
+    - Add <stdint.h> to appease Strawberry Perl GCC.
+
 0.8 2014-04-21
     - The output buffer is now grown as needed.
 
